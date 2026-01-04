@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """
-Remote Access Proxy for Antigravity - Using HTTP library for proper handling
+Remote Access Proxy for Antigravity v2.1
+- Patches chatParams URLs for remote access
+- Auto-detects and injects CSRF token for LSP requests
 """
 import http.server
 import http.client
@@ -9,7 +11,6 @@ import threading
 import re
 import base64
 import json
-import gzip
 import socket
 
 def get_external_ip():
@@ -26,7 +27,8 @@ EXTERNAL_IP = get_external_ip()
 UI_PORT = 8890
 LSP_PORT = 8891
 UI_TARGET = ('127.0.0.1', 9090)
-LSP_TARGET_PORT = 37417  # Will be updated dynamically
+LSP_TARGET_PORT = 37417
+CSRF_TOKEN = None  # Will be extracted from chatParams
 
 def find_lsp_port():
     import subprocess
@@ -52,12 +54,13 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', '*')
+        self.send_header('Access-Control-Allow-Credentials', 'true')
         self.end_headers()
     
     def log_message(self, *args): pass
     
     def proxy_request(self, method):
-        global LSP_TARGET_PORT
+        global LSP_TARGET_PORT, CSRF_TOKEN
         port = self.server.server_address[1]
         
         try:
@@ -70,21 +73,25 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length) if content_length > 0 else None
             
-            # Forward to target
+            # Forward headers
             headers = {}
             for k, v in self.headers.items():
                 if k.lower() not in ['host', 'accept-encoding']:
                     headers[k] = v
             headers['Host'] = f'{target_host}:{target_port}'
             
+            # Inject CSRF token for LSP requests
+            if port == LSP_PORT and CSRF_TOKEN:
+                headers['x-codeium-csrf-token'] = CSRF_TOKEN
+                print(f"[LSP] Injecting CSRF token: {CSRF_TOKEN[:16]}...")
+            
             conn = http.client.HTTPConnection(target_host, target_port, timeout=120)
             conn.request(method, self.path, body, headers)
             response = conn.getresponse()
             
-            # Read response
             response_body = response.read()
             
-            # Patch HTML if UI port and HTML content
+            # Patch HTML if UI port
             if port == UI_PORT and 'text/html' in response.getheader('Content-Type', ''):
                 response_body = self.patch_html(response_body)
             
@@ -95,6 +102,7 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
                     self.send_header(k, v)
             self.send_header('Content-Length', len(response_body))
             self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Access-Control-Allow-Credentials', 'true')
             self.end_headers()
             self.wfile.write(response_body)
             
@@ -104,29 +112,55 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
             self.send_error(502, str(e))
     
     def patch_html(self, body):
-        """Patch Base64-encoded chatParams to fix LSP URLs"""
-        global LSP_TARGET_PORT
+        """Patch Base64-encoded chatParams for remote access"""
+        global LSP_TARGET_PORT, CSRF_TOKEN
+        
+        # Inject crypto.randomUUID polyfill for non-HTTPS contexts
+        polyfill = b'''<script>
+if (typeof crypto.randomUUID !== 'function') {
+  crypto.randomUUID = function() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+}
+</script>'''
+        # Inject polyfill right after <head> or at start of <body>
+        if b'<head>' in body:
+            body = body.replace(b'<head>', b'<head>' + polyfill)
+        elif b'<body' in body:
+            body = body.replace(b'<body', polyfill + b'<body')
+        
         try:
             match = re.search(b"window\\.chatParams\\s*=\\s*['\"]([A-Za-z0-9+/=]+)['\"]", body)
             if match:
                 old_b64 = match.group(1)
                 params = json.loads(base64.b64decode(old_b64))
                 
-                # Extract and update port
+                # Extract port from URL
                 orig_url = params.get('languageServerUrl', '')
                 port_match = re.search(r':(\d+)/', orig_url)
                 if port_match:
                     LSP_TARGET_PORT = int(port_match.group(1))
-                    
-                    new_url = f'http://{EXTERNAL_IP}:{LSP_PORT}/'
-                    params['languageServerUrl'] = new_url
-                    params['httpLanguageServerUrl'] = new_url
-                    
-                    new_b64 = base64.b64encode(json.dumps(params).encode()).decode()
-                    old_full = b"window.chatParams = '" + old_b64 + b"'"
-                    new_full = b"window.chatParams = '" + new_b64.encode() + b"'"
-                    body = body.replace(old_full, new_full)
-                    print(f"[PATCH] LSP: 127.0.0.1:{LSP_TARGET_PORT} -> {EXTERNAL_IP}:{LSP_PORT}")
+                
+                # Extract and store CSRF token
+                token = params.get('csrfToken', '')
+                if token:
+                    CSRF_TOKEN = token
+                    print(f"[SYNC] CSRF Token: {token[:16]}...")
+                
+                # Update URLs to point to our proxy
+                new_url = f'http://{EXTERNAL_IP}:{LSP_PORT}/'
+                params['languageServerUrl'] = new_url
+                params['httpLanguageServerUrl'] = new_url
+                
+                # Re-encode
+                new_b64 = base64.b64encode(json.dumps(params).encode()).decode()
+                old_full = b"window.chatParams = '" + old_b64 + b"'"
+                new_full = b"window.chatParams = '" + new_b64.encode() + b"'"
+                body = body.replace(old_full, new_full)
+                print(f"[PATCH] LSP: 127.0.0.1:{LSP_TARGET_PORT} -> {EXTERNAL_IP}:{LSP_PORT}")
         except Exception as e:
             print(f"[!] Patch error: {e}")
         return body
@@ -140,7 +174,7 @@ def main():
     LSP_TARGET_PORT = find_lsp_port()
     
     print("=" * 60)
-    print("Antigravity Remote Access Proxy (HTTP Library)")
+    print("Antigravity Remote Access Proxy v2.1")
     print("=" * 60)
     print(f"External IP: {EXTERNAL_IP}")
     print(f"LSP Port: {LSP_TARGET_PORT}")
