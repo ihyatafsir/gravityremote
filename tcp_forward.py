@@ -201,13 +201,13 @@ if (typeof crypto.randomUUID !== 'function') {
                 old_b64 = match.group(1)
                 params = json.loads(base64.b64decode(old_b64))
                 
-                # Extract port from URL
+                # Extract port from URL - this is correct because it's paired with the CSRF token
                 orig_url = params.get('languageServerUrl', '')
                 port_match = re.search(r':(\d+)/', orig_url)
                 if port_match:
                     LSP_TARGET_PORT = int(port_match.group(1))
                 
-                # Extract and store CSRF token
+                # Extract and store CSRF token (paired with the port above)
                 token = params.get('csrfToken', '')
                 if token:
                     CSRF_TOKEN = token
