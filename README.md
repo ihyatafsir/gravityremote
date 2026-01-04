@@ -10,13 +10,16 @@ GravityRemote provides a web-based interface for the Antigravity IDE, allowing y
 
 ---
 
-## 🆕 What's New in v2.0
+## 🆕 What's New in v2.3
 
+- **Mobile-Optimized Port (8892)** - Dedicated port with touch-friendly CSS optimizations
+- **TCP Keepalive** - Prevents connection drops during slow typing (10 min timeout)
+- **LSP Response Streaming** - Lower latency for agent responses
 - **True Remote Access** - Access from any device on your network or via Tailscale
 - **Smart URL Patching** - Automatically rewrites internal URLs for external access
 - **Dynamic LSP Discovery** - Auto-detects the language server port on startup
-- **Proper HTTP Handling** - Uses Python's http library for reliable request/response handling
-- **Base64 Parameter Patching** - Patches encoded configuration for seamless remote connectivity
+- **CSRF Token Injection** - Auto-extracts and injects tokens for LSP requests
+- **crypto.randomUUID Polyfill** - Works on HTTP (non-HTTPS) connections
 
 ---
 
@@ -54,14 +57,16 @@ python3 tcp_forward.py
 
 The script will display your external IP. Access from any device:
 
-```
-http://<your-ip>:8890
-```
+| Port | URL | Best For |
+|------|-----|----------|
+| **8890** | `http://<your-ip>:8890` | Desktop browsers |
+| **8892** | `http://<your-ip>:8892` | **Mobile devices** (touch-optimized) |
 
 That's it! The proxy automatically:
 - Detects the Antigravity LSP port
 - Patches URLs for remote access
 - Handles CORS and authentication headers
+- Injects mobile CSS for port 8892
 
 ---
 
@@ -78,10 +83,12 @@ That's it! The proxy automatically:
 │              tcp_forward.py (Proxy Server)                  │
 │   Port 8890 (UI) ──────► 127.0.0.1:9090 (Agent Tab)        │
 │   Port 8891 (LSP) ─────► 127.0.0.1:xxxxx (Dynamic)         │
+│   Port 8892 (Mobile) ──► 127.0.0.1:9090 (Touch CSS)        │
 │                                                             │
 │   • Rewrites Host headers                                   │
 │   • Patches Base64-encoded chatParams                       │
 │   • Dynamic LSP port discovery                              │
+│   • TCP Keepalive (10 min timeout)                          │
 └─────────────────────────────────────────────────────────────┘
                           │
                           ▼
@@ -99,8 +106,9 @@ That's it! The proxy automatically:
 
 | Port | Service | Description |
 |------|---------|-------------|
-| 8890 | UI Proxy | Main entry point for remote access |
-| 8891 | LSP Proxy | Language server communication |
+| **8890** | UI Proxy | Desktop entry point for remote access |
+| **8891** | LSP Proxy | Language server communication |
+| **8892** | Mobile Proxy | **Touch-optimized** UI with mobile CSS |
 | 9090 | Agent Tab | Antigravity internal UI (localhost only) |
 | Dynamic | LSP | Language server (auto-detected) |
 
@@ -108,8 +116,9 @@ That's it! The proxy automatically:
 
 Edit `tcp_forward.py`:
 ```python
-UI_PORT = 8890   # Change to your preferred port
-LSP_PORT = 8891  # Change to your preferred port
+UI_PORT = 8890      # Desktop UI proxy
+LSP_PORT = 8891     # Language server proxy
+MOBILE_PORT = 8892  # Mobile-optimized UI
 ```
 
 ---
