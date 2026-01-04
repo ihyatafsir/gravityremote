@@ -84,29 +84,45 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
             # Inject CSRF token for LSP requests
             if port == LSP_PORT and CSRF_TOKEN:
                 headers['x-codeium-csrf-token'] = CSRF_TOKEN
-                print(f"[LSP] Injecting CSRF token: {CSRF_TOKEN[:16]}...")
             
             conn = http.client.HTTPConnection(target_host, target_port, timeout=120)
             conn.request(method, self.path, body, headers)
             response = conn.getresponse()
             
-            response_body = response.read()
-            
-            # Patch HTML if UI or Mobile port
-            if port in (UI_PORT, MOBILE_PORT) and 'text/html' in response.getheader('Content-Type', ''):
-                is_mobile = (port == MOBILE_PORT)
-                response_body = self.patch_html(response_body, mobile=is_mobile)
-            
-            # Send response
-            self.send_response(response.status)
-            for k, v in response.getheaders():
-                if k.lower() not in ['content-length', 'transfer-encoding', 'content-encoding', 'connection']:
-                    self.send_header(k, v)
-            self.send_header('Content-Length', len(response_body))
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.send_header('Access-Control-Allow-Credentials', 'true')
-            self.end_headers()
-            self.wfile.write(response_body)
+            # For LSP: Stream response immediately for lower latency
+            if port == LSP_PORT:
+                self.send_response(response.status)
+                for k, v in response.getheaders():
+                    if k.lower() not in ['transfer-encoding', 'connection']:
+                        self.send_header(k, v)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Access-Control-Allow-Credentials', 'true')
+                self.end_headers()
+                
+                # Stream chunks immediately
+                while True:
+                    chunk = response.read(4096)
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+                    self.wfile.flush()
+            else:
+                # For UI/Mobile: Buffer for HTML patching
+                response_body = response.read()
+                
+                if port in (UI_PORT, MOBILE_PORT) and 'text/html' in response.getheader('Content-Type', ''):
+                    is_mobile = (port == MOBILE_PORT)
+                    response_body = self.patch_html(response_body, mobile=is_mobile)
+                
+                self.send_response(response.status)
+                for k, v in response.getheaders():
+                    if k.lower() not in ['content-length', 'transfer-encoding', 'content-encoding', 'connection']:
+                        self.send_header(k, v)
+                self.send_header('Content-Length', len(response_body))
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Access-Control-Allow-Credentials', 'true')
+                self.end_headers()
+                self.wfile.write(response_body)
             
             conn.close()
         except Exception as e:
