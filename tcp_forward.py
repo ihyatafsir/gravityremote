@@ -26,6 +26,7 @@ def get_external_ip():
 EXTERNAL_IP = get_external_ip()
 UI_PORT = 8890
 LSP_PORT = 8891
+MOBILE_PORT = 8892  # Mobile-friendly interface
 UI_TARGET = ('127.0.0.1', 9090)
 LSP_TARGET_PORT = 37417
 CSRF_TOKEN = None  # Will be extracted from chatParams
@@ -64,7 +65,7 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
         port = self.server.server_address[1]
         
         try:
-            if port == UI_PORT:
+            if port in (UI_PORT, MOBILE_PORT):
                 target_host, target_port = UI_TARGET
             else:
                 target_host, target_port = '127.0.0.1', LSP_TARGET_PORT
@@ -91,9 +92,10 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
             
             response_body = response.read()
             
-            # Patch HTML if UI port
-            if port == UI_PORT and 'text/html' in response.getheader('Content-Type', ''):
-                response_body = self.patch_html(response_body)
+            # Patch HTML if UI or Mobile port
+            if port in (UI_PORT, MOBILE_PORT) and 'text/html' in response.getheader('Content-Type', ''):
+                is_mobile = (port == MOBILE_PORT)
+                response_body = self.patch_html(response_body, mobile=is_mobile)
             
             # Send response
             self.send_response(response.status)
@@ -111,9 +113,52 @@ class ProxyHandler(http.server.BaseHTTPRequestHandler):
             print(f"[ERROR] {e}")
             self.send_error(502, str(e))
     
-    def patch_html(self, body):
+    def patch_html(self, body, mobile=False):
         """Patch Base64-encoded chatParams for remote access"""
         global LSP_TARGET_PORT, CSRF_TOKEN
+        
+        # Mobile CSS injection for better touch experience
+        if mobile:
+            mobile_css = b'''<style>
+/* Mobile-friendly adjustments */
+html, body { touch-action: manipulation; }
+* { -webkit-tap-highlight-color: transparent; }
+:root {
+  --mobile-font-scale: 1.1;
+  --mobile-touch-target: 44px;
+}
+/* Larger touch targets */
+button, input, textarea, [role="button"] {
+  min-height: var(--mobile-touch-target) !important;
+  font-size: calc(1em * var(--mobile-font-scale)) !important;
+}
+/* Better text sizing */
+.message-content, .chat-message, p, span {
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+}
+/* Improve scrolling */
+[class*="scroll"], [class*="list"] {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+/* Hide desktop-only elements */
+.sidebar, .file-explorer, [class*="panel"]:not([class*="chat"]) {
+  display: none !important;
+}
+/* Fullscreen chat */
+[class*="chat"], [class*="message"] {
+  width: 100% !important;
+  max-width: 100vw !important;
+}
+/* Viewport meta */
+</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+'''  
+            if b'<head>' in body:
+                body = body.replace(b'<head>', b'<head>' + mobile_css)
+            elif b'<body' in body:
+                body = body.replace(b'<body', mobile_css + b'<body')
         
         # Inject crypto.randomUUID polyfill for non-HTTPS contexts
         polyfill = b'''<script>
@@ -174,21 +219,27 @@ def main():
     LSP_TARGET_PORT = find_lsp_port()
     
     print("=" * 60)
-    print("Antigravity Remote Access Proxy v2.1")
+    print("Antigravity Remote Access Proxy v2.2")
     print("=" * 60)
     print(f"External IP: {EXTERNAL_IP}")
     print(f"LSP Port: {LSP_TARGET_PORT}")
-    print(f"\nUI:  http://0.0.0.0:{UI_PORT} -> http://127.0.0.1:9090")
-    print(f"LSP: http://0.0.0.0:{LSP_PORT} -> http://127.0.0.1:{LSP_TARGET_PORT}")
-    print(f"\nAccess: http://{EXTERNAL_IP}:{UI_PORT}")
+    print(f"\nUI:     http://0.0.0.0:{UI_PORT} -> http://127.0.0.1:9090")
+    print(f"Mobile: http://0.0.0.0:{MOBILE_PORT} -> http://127.0.0.1:9090 (mobile-optimized)")
+    print(f"LSP:    http://0.0.0.0:{LSP_PORT} -> http://127.0.0.1:{LSP_TARGET_PORT}")
+    print(f"\nAccess:")
+    print(f"  Desktop: http://{EXTERNAL_IP}:{UI_PORT}")
+    print(f"  Mobile:  http://{EXTERNAL_IP}:{MOBILE_PORT}")
     
     ui_server = ThreadedHTTPServer(('0.0.0.0', UI_PORT), ProxyHandler)
+    mobile_server = ThreadedHTTPServer(('0.0.0.0', MOBILE_PORT), ProxyHandler)
     lsp_server = ThreadedHTTPServer(('0.0.0.0', LSP_PORT), ProxyHandler)
     
     t1 = threading.Thread(target=ui_server.serve_forever, daemon=True)
-    t2 = threading.Thread(target=lsp_server.serve_forever, daemon=True)
+    t2 = threading.Thread(target=mobile_server.serve_forever, daemon=True)
+    t3 = threading.Thread(target=lsp_server.serve_forever, daemon=True)
     t1.start()
     t2.start()
+    t3.start()
     
     print("\nPress Ctrl+C to stop\n")
     try:
