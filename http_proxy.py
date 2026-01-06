@@ -30,11 +30,11 @@ class ProxyHandler(BaseHTTPRequestHandler):
                 req.data = self.rfile.read(int(self.headers['Content-Length']))
 
             with urllib.request.urlopen(req) as response:
-                content = response.read()
-                
-                # --- MOBILE OPTIMIZATION INJECTION ---
                 content_type = response.headers.get('Content-Type', '')
+                
+                # For HTML, read and inject mobile optimizations
                 if 'text/html' in content_type:
+                    content = response.read()
                     try:
                         html = content.decode('utf-8')
                         injection = """
@@ -56,17 +56,46 @@ class ProxyHandler(BaseHTTPRequestHandler):
                             html = injection + html
                         content = html.encode('utf-8')
                     except:
-                        pass 
-
-                self.send_response(response.status)
-                for k, v in response.headers.items():
-                    if k.lower() not in ['content-encoding', 'transfer-encoding', 'content-length']:
-                         self.send_header(k, v)
-                
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.send_header('Content-Length', str(len(content)))
-                self.end_headers()
-                self.wfile.write(content)
+                        pass
+                    
+                    # Send HTML with content-length
+                    self.send_response(response.status)
+                    for k, v in response.headers.items():
+                        if k.lower() not in ['content-encoding', 'transfer-encoding', 'content-length']:
+                            self.send_header(k, v)
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_header('Content-Length', str(len(content)))
+                    self.end_headers()
+                    self.wfile.write(content)
+                else:
+                    # For non-HTML (JSON, images, etc.), use chunked streaming to prevent buildup
+                    self.send_response(response.status)
+                    for k, v in response.headers.items():
+                        if k.lower() not in ['content-encoding', 'content-length']:
+                            self.send_header(k, v)
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_header('Transfer-Encoding', 'chunked')
+                    self.end_headers()
+                    
+                    # Stream in 8KB chunks to prevent memory buildup
+                    while True:
+                        chunk = response.read(8192)
+                        if not chunk:
+                            break
+                        try:
+                            self.wfile.write(f'{len(chunk):X}\r\n'.encode())
+                            self.wfile.write(chunk)
+                            self.wfile.write(b'\r\n')
+                            self.wfile.flush()
+                        except (BrokenPipeError, ConnectionResetError):
+                            # Client disconnected, stop streaming
+                            break
+                    # Send final chunk
+                    try:
+                        self.wfile.write(b'0\r\n\r\n')
+                        self.wfile.flush()
+                    except (BrokenPipeError, ConnectionResetError):
+                        pass
                 
         except urllib.error.HTTPError as e:
             self.send_response(e.code)
