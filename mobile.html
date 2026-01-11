@@ -137,6 +137,11 @@
             border: 1px solid var(--border);
         }
 
+        .btn-agent {
+            background: linear-gradient(135deg, var(--accent-blue) 0%, #0066cc 100%);
+            color: white;
+        }
+
         .btn-danger {
             background: linear-gradient(135deg, var(--accent-red) 0%, #cc0000 100%);
             color: white;
@@ -314,8 +319,11 @@
         <button class="control-btn btn-restart" onclick="showRestartModal()">
             ⟳ Restart IDE
         </button>
+        <button class="control-btn btn-agent" onclick="openAgentMode()">
+            ⌨ Agent Mode
+        </button>
         <button class="control-btn btn-refresh" onclick="refreshFrame()">
-            ↻ Refresh Chat
+            ↻ Refresh
         </button>
     </div>
 
@@ -365,7 +373,7 @@
 
         // Use the server hostname instead of 127.0.0.1
         const PROXY_HOST = window.location.hostname;
-        const PROXY_PORT = 9092;
+        const PROXY_PORT = 8892;
         const PROXY_URL = `http://${PROXY_HOST}:${PROXY_PORT}`;
 
         // Set iframe source on load
@@ -392,6 +400,25 @@
         function refreshFrame() {
             agentFrame.src = PROXY_URL;
             showToast('Refreshing chat...');
+        }
+
+        // Open Agent Mode (send Ctrl+E to IDE)
+        async function openAgentMode() {
+            showToast('Opening Agent Mode...');
+            try {
+                const response = await fetch('/api/agent-mode', { method: 'POST' });
+                if (response.ok) {
+                    showToast('Agent Mode activated!');
+                    // Refresh iframe after short delay
+                    setTimeout(() => {
+                        agentFrame.src = PROXY_URL;
+                    }, 1000);
+                } else {
+                    showToast('Failed to activate Agent Mode');
+                }
+            } catch (e) {
+                showToast('Agent Mode request sent');
+            }
         }
 
         // Show restart modal

@@ -32,8 +32,48 @@ class MobileHandler(http.server.SimpleHTTPRequestHandler):
         
         if parsed.path == '/api/restart-ide':
             return self.handle_restart_ide()
+        elif parsed.path == '/api/agent-mode':
+            return self.handle_agent_mode()
         
         self.send_error(404, 'Not Found')
+    
+    def handle_agent_mode(self):
+        """Send Ctrl+E to open Agent Mode in IDE"""
+        print("[Mobile Server] Agent Mode requested (Ctrl+E)")
+        
+        try:
+            # Use xdotool to send Ctrl+E to the active window
+            result = subprocess.run(
+                ['xdotool', 'key', 'ctrl+e'],
+                capture_output=True,
+                text=True
+            )
+            
+            print(f"[Mobile Server] xdotool result: {result.returncode}")
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = {
+                'success': True,
+                'message': 'Agent Mode signal sent (Ctrl+E)'
+            }
+            self.wfile.write(json.dumps(response).encode())
+            
+        except Exception as e:
+            print(f"[Mobile Server] Agent mode error: {e}")
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = {
+                'success': False,
+                'message': str(e)
+            }
+            self.wfile.write(json.dumps(response).encode())
     
     def handle_restart_ide(self):
         """Restart the Antigravity IDE process"""
