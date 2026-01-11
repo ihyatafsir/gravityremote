@@ -7,18 +7,18 @@
     <title>GravityRemote Mobile</title>
     <style>
         :root {
-            --bg-primary: #0d0d0d;
-            --bg-secondary: #1a1a1a;
-            --bg-tertiary: #252525;
-            --bg-hover: #333333;
-            --border: #333333;
-            --text-primary: #e0e0e0;
-            --text-secondary: #888888;
-            --accent-blue: #00a8ff;
-            --accent-green: #00ff88;
-            --accent-red: #ff4444;
-            --accent-orange: #ff9500;
-            --font-mono: 'SF Mono', 'Monaco', 'Consolas', monospace;
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --bg-hover: #252525;
+            --border: #1f1f1f;
+            --text-primary: #33ff33;
+            --text-secondary: #228822;
+            --accent-green: #33ff33;
+            --accent-green-dark: #22aa22;
+            --accent-red: #ff3333;
+            --font-mono: 'Courier New', 'Monaco', monospace;
+            --font-digital: 'Courier New', monospace;
             --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
@@ -40,10 +40,10 @@
             overflow: hidden;
         }
 
-        /* Header - Compact */
+        /* Header - Ultra Compact */
         .header {
             background: var(--bg-secondary);
-            padding: 8px 15px;
+            padding: 4px 10px;
             border-bottom: 1px solid var(--border);
             display: flex;
             justify-content: space-between;
@@ -51,9 +51,11 @@
         }
 
         .brand {
-            font-size: 14px;
+            font-size: 11px;
             font-weight: 600;
-            color: var(--accent-blue);
+            color: var(--accent-green);
+            font-family: var(--font-mono);
+            text-shadow: 0 0 8px var(--accent-green);
         }
 
         .brand::before {
@@ -64,11 +66,11 @@
         .status-badge {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 12px;
-            padding: 6px 12px;
-            background: var(--bg-tertiary);
-            border-radius: 20px;
+            gap: 5px;
+            font-size: 9px;
+            font-family: var(--font-mono);
+            color: var(--accent-green);
+            text-shadow: 0 0 5px var(--accent-green);
         }
 
         .status-dot {
@@ -121,19 +123,23 @@
         }
 
         .btn-restart {
-            background: linear-gradient(135deg, var(--accent-orange) 0%, #ff6600 100%);
-            color: white;
+            background: linear-gradient(135deg, #116611 0%, #0a440a 100%);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green-dark);
+            text-shadow: 0 0 5px var(--accent-green);
         }
 
         .btn-refresh {
             background: var(--bg-tertiary);
-            color: var(--text-primary);
-            border: 1px solid var(--border);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green-dark);
         }
 
         .btn-agent {
-            background: linear-gradient(135deg, var(--accent-blue) 0%, #0066cc 100%);
-            color: white;
+            background: linear-gradient(135deg, #114411 0%, #082808 100%);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green-dark);
+            text-shadow: 0 0 5px var(--accent-green);
         }
 
         .btn-danger {
@@ -151,16 +157,48 @@
         }
 
         .chat-header {
-            padding: 12px 20px;
-            font-size: 12px;
+            padding: 4px 10px;
+            font-size: 9px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: var(--text-secondary);
+            color: var(--accent-green);
             background: var(--bg-secondary);
             display: flex;
             justify-content: space-between;
             align-items: center;
+            font-family: var(--font-mono);
+            text-shadow: 0 0 5px var(--accent-green);
+        }
+
+        /* System Stats - 80s Digital */
+        .system-stats {
+            padding: 4px 10px;
+            background: #050505;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            font-family: var(--font-digital);
+            font-size: 11px;
+            color: var(--accent-green);
+            text-shadow: 0 0 10px var(--accent-green);
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .stat-label {
+            color: var(--accent-green-dark);
+            font-size: 9px;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            letter-spacing: 1px;
         }
 
         .agent-frame-wrapper {
@@ -297,12 +335,24 @@
 
     <!-- Header -->
     <header class="header">
-        <div class="brand">GravityRemote</div>
+        <div class="brand">▶ GRAVITYREMOTE</div>
         <div class="status-badge">
             <div id="status-dot" class="status-dot"></div>
-            <span id="status-text">...</span>
+            <span id="status-text">INIT</span>
         </div>
     </header>
+
+    <!-- System Stats - 80s Digital -->
+    <div class="system-stats">
+        <div class="stat-item">
+            <span class="stat-label">CPU:</span>
+            <span class="stat-value" id="cpu-stat">---%</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">RAM:</span>
+            <span class="stat-value" id="ram-stat">---MB</span>
+        </div>
+    </div>
 
     <!-- Control Panel -->
     <div class="control-panel">
@@ -374,40 +424,52 @@
             fetch(PROXY_URL, { mode: 'no-cors' })
                 .then(() => {
                     statusDot.classList.add('connected');
-                    statusText.textContent = 'Connected';
-                    connLabel.style.color = 'var(--accent-green)';
-                    connLabel.textContent = '● Live';
+                    statusText.textContent = 'ONLINE';
+                    connLabel.textContent = '● LIVE';
                 })
                 .catch(() => {
                     statusDot.classList.remove('connected');
-                    statusText.textContent = 'Disconnected';
-                    connLabel.style.color = 'var(--accent-red)';
-                    connLabel.textContent = '○ Offline';
+                    statusText.textContent = 'OFFLINE';
+                    connLabel.textContent = '○ DOWN';
                 });
+        }
+
+        // Fetch and display system stats (80s style)
+        async function updateSystemStats() {
+            try {
+                const response = await fetch('/api/stats');
+                if (response.ok) {
+                    const stats = await response.json();
+                    document.getElementById('cpu-stat').textContent = stats.cpu + '%';
+                    document.getElementById('ram-stat').textContent = stats.ram + 'MB';
+                }
+            } catch (e) {
+                document.getElementById('cpu-stat').textContent = 'ERR';
+                document.getElementById('ram-stat').textContent = 'ERR';
+            }
         }
 
         // Refresh the agent frame
         function refreshFrame() {
             agentFrame.src = PROXY_URL;
-            showToast('Refreshing chat...');
+            showToast('REFRESHING...');
         }
 
         // Open Agent Mode (send Ctrl+E to IDE)
         async function openAgentMode() {
-            showToast('Opening Agent Mode...');
+            showToast('ACTIVATING AGENT...');
             try {
                 const response = await fetch('/api/agent-mode', { method: 'POST' });
                 if (response.ok) {
-                    showToast('Agent Mode activated!');
-                    // Refresh iframe after short delay
+                    showToast('AGENT MODE ON');
                     setTimeout(() => {
                         agentFrame.src = PROXY_URL;
                     }, 1000);
                 } else {
-                    showToast('Failed to activate Agent Mode');
+                    showToast('AGENT FAIL');
                 }
             } catch (e) {
-                showToast('Agent Mode request sent');
+                showToast('SIGNAL SENT');
             }
         }
 
@@ -427,22 +489,20 @@
             const text = document.getElementById('restart-text');
 
             spinner.classList.add('active');
-            text.textContent = 'Restarting...';
+            text.textContent = 'RESTARTING...';
 
             try {
-                // Call the restart endpoint
                 const response = await fetch('/api/restart-ide', { method: 'POST' });
                 if (response.ok) {
-                    showToast('IDE restart initiated!');
+                    showToast('IDE RESTART OK');
                     setTimeout(() => {
                         window.location.reload();
                     }, 5000);
                 } else {
-                    showToast('Restart failed. Check logs.');
+                    showToast('RESTART FAIL');
                 }
             } catch (e) {
-                showToast('Restart request sent.');
-                // Even if error, likely the server restarted
+                showToast('SIGNAL SENT');
                 setTimeout(() => {
                     window.location.reload();
                 }, 5000);
@@ -450,7 +510,7 @@
 
             hideRestartModal();
             spinner.classList.remove('active');
-            text.textContent = 'Restart';
+            text.textContent = 'RESTART';
         }
 
         // Show toast message
@@ -463,7 +523,9 @@
 
         // Initialize
         checkConnection();
+        updateSystemStats();
         setInterval(checkConnection, 10000);
+        setInterval(updateSystemStats, 3000);
     </script>
 </body>
 

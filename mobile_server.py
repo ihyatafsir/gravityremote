@@ -9,6 +9,7 @@ import socketserver
 import subprocess
 import json
 import os
+import psutil
 from urllib.parse import urlparse
 
 PORT = 8893
@@ -24,8 +25,29 @@ class MobileHandler(http.server.SimpleHTTPRequestHandler):
         # Serve mobile.html as default
         if parsed.path == '/' or parsed.path == '/mobile':
             self.path = '/mobile.html'
+        elif parsed.path == '/api/stats':
+            return self.handle_stats()
         
         return super().do_GET()
+    
+    def handle_stats(self):
+        """Return CPU and RAM usage for retro display"""
+        try:
+            cpu = int(psutil.cpu_percent(interval=0.1))
+            ram = int(psutil.virtual_memory().used / 1024 / 1024)
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = {'cpu': cpu, 'ram': ram}
+            self.wfile.write(json.dumps(response).encode())
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({'error': str(e)}).encode())
     
     def do_POST(self):
         parsed = urlparse(self.path)
