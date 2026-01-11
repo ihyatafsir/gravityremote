@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Antigravity Mobile</title>
+    <style>
+        :root {
+            --bg-primary: #0d0d0d;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #252525;
+            --bg-hover: #333333;
+            --border: #333333;
+            --text-primary: #e0e0e0;
+            --text-secondary: #888888;
+            --accent-blue: #00a8ff;
+            --accent-green: #00ff88;
+            --accent-red: #ff4444;
+            --accent-orange: #ff9500;
+            --font-mono: 'SF Mono', 'Monaco', 'Consolas', monospace;
+            --font-ui: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: var(--font-ui);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent-blue);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .brand::before {
+            content: '◆';
+            font-size: 20px;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            padding: 6px 12px;
+            background: var(--bg-tertiary);
+            border-radius: 20px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-red);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.connected {
+            background: var(--accent-green);
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        /* Control Panel */
+        .control-panel {
+            padding: 15px 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            flex: 1;
+            min-width: 140px;
+            padding: 14px 20px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .control-btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-restart {
+            background: linear-gradient(135deg, var(--accent-orange) 0%, #ff6600 100%);
+            color: white;
+        }
+
+        .btn-refresh {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, var(--accent-red) 0%, #cc0000 100%);
+            color: white;
+        }
+
+        /* Chat Container */
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border-top: 1px solid var(--border);
+        }
+
+        .chat-header {
+            padding: 12px 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            background: var(--bg-secondary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .agent-frame-wrapper {
+            flex: 1;
+            overflow: hidden;
+            background: var(--bg-primary);
+        }
+
+        .agent-frame-wrapper iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 15px 20px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            padding: 25px;
+            max-width: 400px;
+            width: 100%;
+            border: 1px solid var(--border);
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: var(--accent-orange);
+        }
+
+        .modal-text {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-actions button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .modal-cancel {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .modal-confirm {
+            background: var(--accent-orange);
+            color: white;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--text-secondary);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .spinner.active {
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            z-index: 2000;
+            opacity: 0;
+            transition: all 0.3s ease;
+            border: 1px solid var(--border);
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="brand">Antigravity</div>
+        <div class="status-badge">
+            <div id="status-dot" class="status-dot"></div>
+            <span id="status-text">Connecting...</span>
+        </div>
+    </header>
+
+    <!-- Control Panel -->
+    <div class="control-panel">
+        <button class="control-btn btn-restart" onclick="showRestartModal()">
+            ⟳ Restart IDE
+        </button>
+        <button class="control-btn btn-refresh" onclick="refreshFrame()">
+            ↻ Refresh Chat
+        </button>
+    </div>
+
+    <!-- Agent Chat -->
+    <div class="chat-container">
+        <div class="chat-header">
+            <span>Antigravity Agent</span>
+            <span id="conn-label" style="color: var(--accent-green);">● Live</span>
+        </div>
+        <div class="agent-frame-wrapper">
+            <iframe id="agent-frame" src="http://127.0.0.1:9092" allow="clipboard-read; clipboard-write"></iframe>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+        Mobile Remote v1.0 • Port 8893 • Dark Mode
+    </div>
+
+    <!-- Restart Modal -->
+    <div id="restart-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-title">⟳ Restart Antigravity IDE</div>
+            <div class="modal-text">
+                This will restart the Antigravity IDE process. The connection may be temporarily interrupted.
+                <br><br>
+                Are you sure you want to continue?
+            </div>
+            <div class="modal-actions">
+                <button class="modal-cancel" onclick="hideRestartModal()">Cancel</button>
+                <button class="modal-confirm" onclick="restartIDE()">
+                    <span id="restart-spinner" class="spinner"></span>
+                    <span id="restart-text">Restart</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        const agentFrame = document.getElementById('agent-frame');
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const connLabel = document.getElementById('conn-label');
+
+        // Check connection status
+        function checkConnection() {
+            fetch('http://127.0.0.1:9092', { mode: 'no-cors' })
+                .then(() => {
+                    statusDot.classList.add('connected');
+                    statusText.textContent = 'Connected';
+                    connLabel.style.color = 'var(--accent-green)';
+                    connLabel.textContent = '● Live';
+                })
+                .catch(() => {
+                    statusDot.classList.remove('connected');
+                    statusText.textContent = 'Disconnected';
+                    connLabel.style.color = 'var(--accent-red)';
+                    connLabel.textContent = '○ Offline';
+                });
+        }
+
+        // Refresh the agent frame
+        function refreshFrame() {
+            agentFrame.src = agentFrame.src;
+            showToast('Refreshing chat...');
+        }
+
+        // Show restart modal
+        function showRestartModal() {
+            document.getElementById('restart-modal').classList.add('active');
+        }
+
+        // Hide restart modal
+        function hideRestartModal() {
+            document.getElementById('restart-modal').classList.remove('active');
+        }
+
+        // Restart IDE
+        async function restartIDE() {
+            const spinner = document.getElementById('restart-spinner');
+            const text = document.getElementById('restart-text');
+
+            spinner.classList.add('active');
+            text.textContent = 'Restarting...';
+
+            try {
+                // Call the restart endpoint
+                const response = await fetch('/api/restart-ide', { method: 'POST' });
+                if (response.ok) {
+                    showToast('IDE restart initiated!');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 5000);
+                } else {
+                    showToast('Restart failed. Check logs.');
+                }
+            } catch (e) {
+                showToast('Restart request sent.');
+                // Even if error, likely the server restarted
+                setTimeout(() => {
+                    window.location.reload();
+                }, 5000);
+            }
+
+            hideRestartModal();
+            spinner.classList.remove('active');
+            text.textContent = 'Restart';
+        }
+
+        // Show toast message
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Initialize
+        checkConnection();
+        setInterval(checkConnection, 10000);
+    </script>
+</body>
+
+</html>
