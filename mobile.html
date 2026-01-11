@@ -326,7 +326,7 @@
             <span id="conn-label" style="color: var(--accent-green);">● Live</span>
         </div>
         <div class="agent-frame-wrapper">
-            <iframe id="agent-frame" src="http://127.0.0.1:9092" allow="clipboard-read; clipboard-write"></iframe>
+            <iframe id="agent-frame" src="" allow="clipboard-read; clipboard-write"></iframe>
         </div>
     </div>
 
@@ -363,9 +363,17 @@
         const statusText = document.getElementById('status-text');
         const connLabel = document.getElementById('conn-label');
 
+        // Use the server hostname instead of 127.0.0.1
+        const PROXY_HOST = window.location.hostname;
+        const PROXY_PORT = 9092;
+        const PROXY_URL = `http://${PROXY_HOST}:${PROXY_PORT}`;
+
+        // Set iframe source on load
+        agentFrame.src = PROXY_URL;
+
         // Check connection status
         function checkConnection() {
-            fetch('http://127.0.0.1:9092', { mode: 'no-cors' })
+            fetch(PROXY_URL, { mode: 'no-cors' })
                 .then(() => {
                     statusDot.classList.add('connected');
                     statusText.textContent = 'Connected';
@@ -382,7 +390,7 @@
 
         // Refresh the agent frame
         function refreshFrame() {
-            agentFrame.src = agentFrame.src;
+            agentFrame.src = PROXY_URL;
             showToast('Refreshing chat...');
         }
 
