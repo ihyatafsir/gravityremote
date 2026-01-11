@@ -1,0 +1,15 @@
+[Unit]
+Description=GravityRemote Mobile Server (Port 8893)
+After=network.target
+
+[Service]
+Type=simple
+User=absolut7
+WorkingDirectory=/home/absolut7/Documents/remotegravity2
+ExecStart=/usr/bin/python3 /home/absolut7/Documents/remotegravity2/mobile_server.py
+Restart=always
+RestartSec=5
+Environment=DISPLAY=:0
+
+[Install]
+WantedBy=multi-user.target
