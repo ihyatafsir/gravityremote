@@ -56,11 +56,20 @@
             color: var(--accent-green);
             font-family: var(--font-mono);
             text-shadow: 0 0 8px var(--accent-green);
+            cursor: pointer;
+            user-select: none;
         }
 
         .brand::before {
             content: '◆';
             font-size: 20px;
+        }
+
+        /* Collapsible sections */
+        .system-stats.collapsed,
+        .control-panel.collapsed,
+        .lisan-banners.collapsed {
+            display: none;
         }
 
         .status-badge {
@@ -328,6 +337,74 @@
             transform: translateX(-50%) translateY(0);
             opacity: 1;
         }
+
+        /* Header Right Section */
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .agent-badge {
+            font-size: 9px;
+            font-family: var(--font-mono);
+            color: var(--accent-green);
+            text-shadow: 0 0 5px var(--accent-green);
+            text-transform: uppercase;
+        }
+
+        .live-badge {
+            font-size: 9px;
+            font-family: var(--font-mono);
+            color: var(--accent-green);
+            text-shadow: 0 0 8px var(--accent-green);
+        }
+
+        /* Lisan al-Arab Scrolling Text - Two Parallel Strips */
+        .lisan-banners {
+            background: #050505;
+            border-bottom: 1px solid var(--border);
+            padding: 2px 0;
+            overflow: hidden;
+        }
+
+        .lisan-strip {
+            overflow: hidden;
+            white-space: nowrap;
+            line-height: 1.2;
+        }
+
+        .lisan-strip-arabic {
+            direction: rtl;
+        }
+
+        .lisan-strip-latin {
+            direction: ltr;
+        }
+
+        .marquee-text {
+            display: inline-block;
+            padding-right: 50px;
+            /* Animation handled by JavaScript for synchronized speed */
+        }
+
+        .marquee-arabic {
+            font-size: 15px;
+            font-family: 'Amiri', 'Traditional Arabic', 'Scheherazade', serif;
+            color: var(--accent-green);
+            text-shadow: 0 0 10px var(--accent-green), 0 0 20px var(--accent-green-dark);
+            letter-spacing: 0;
+            word-spacing: 8px;
+        }
+
+        .marquee-latin {
+            font-size: 10px;
+            font-family: var(--font-mono);
+            color: #22cc22;
+            text-shadow: 0 0 6px #22cc22;
+            letter-spacing: 2px;
+            word-spacing: 12px;
+        }
     </style>
 </head>
 
@@ -335,10 +412,14 @@
 
     <!-- Header -->
     <header class="header">
-        <div class="brand">▶ GRAVITYREMOTE</div>
-        <div class="status-badge">
-            <div id="status-dot" class="status-dot"></div>
-            <span id="status-text">INIT</span>
+        <div class="brand" id="brand-toggle" onclick="toggleHeaders()">◆ GRAVITYREMOTE</div>
+        <div class="header-right">
+            <span class="agent-badge">Agent</span>
+            <span id="conn-label" class="live-badge">● LIVE</span>
+            <div class="status-badge">
+                <div id="status-dot" class="status-dot"></div>
+                <span id="status-text">INIT</span>
+            </div>
         </div>
     </header>
 
@@ -369,9 +450,14 @@
 
     <!-- Agent Chat -->
     <div class="chat-container">
-        <div class="chat-header">
-            <span>Agent</span>
-            <span id="conn-label" style="color: var(--accent-green);">● LIVE</span>
+        <!-- Lisan al-Arab Scrolling Text - Two Parallel Strips -->
+        <div class="lisan-banners">
+            <div class="lisan-strip lisan-strip-arabic">
+                <span class="marquee-text marquee-arabic" id="lisan-arabic"></span>
+            </div>
+            <div class="lisan-strip lisan-strip-latin">
+                <span class="marquee-text marquee-latin" id="lisan-latin"></span>
+            </div>
         </div>
         <div class="agent-frame-wrapper">
             <iframe id="agent-frame" src="" allow="clipboard-read; clipboard-write"></iframe>
@@ -521,11 +607,184 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
+        // Toggle headers visibility
+        let headersCollapsed = false;
+        function toggleHeaders() {
+            headersCollapsed = !headersCollapsed;
+            document.querySelector('.system-stats').classList.toggle('collapsed', headersCollapsed);
+            document.querySelector('.control-panel').classList.toggle('collapsed', headersCollapsed);
+            document.querySelector('.lisan-banners').classList.toggle('collapsed', headersCollapsed);
+        }
+
         // Initialize
         checkConnection();
         updateSystemStats();
         setInterval(checkConnection, 10000);
         setInterval(updateSystemStats, 3000);
+
+        // ========================================
+        // لِسَان العَرَب - Lisan al-Arab Streaming
+        // ========================================
+
+        // Lisan al-Arab sentences (from lisanclean.json)
+        const lisanSentences = [
+            "البَرْقُ سَرِيعُ اللَّمْعِ وَالبَاطِنُ ظَاهِرٌ فِي كُلِّ شَيْءٍ",
+            "الأَدَبُ الَّذِي يَتَأَدَّبُ بِهِ الأَدِيبُ مِنَ النَّاسِ",
+            "المِفْتَاحُ آلَةُ الفَتْحِ وَالشَّمْسَةُ عَلَامَةُ السِّرِّيَّةِ",
+            "الإِنْتِشَارُ التَّفَرُّقُ وَالوَسْمُ أَثَرُ الكَيِّ",
+            "أَجَأ جَبَلٌ لِطَيِّىءٍ يُذَكَّرُ وَيُؤَنَّثُ",
+            "الأَبُّ الكَلَأُ وَالـمَرْعَى وَمَا تَعْتَلِفُهُ الـمَاشِيَةُ",
+            "غَلاَّبةٌ لِلنَّاجِياتِ الغُلْبِ حَتَّى أَتَى أُزْبِيُّها بِالأَدْبِ",
+            "الخَناذِيذُ رُؤُوسُ الجِبَالِ كَجِيدِ عَرُوسٍ مُتَبَذِّلَةٍ",
+            "نَحْنُ فِي الـمَشْتَاةِ نَدْعُو الجَفَلى لا تَرَى الآدِبَ فِينَا يَنْتَقِرُ",
+            "الإِرْبُ العُضْوُ الـمُوَفَّرُ الكَامِلُ الَّذِي لَمْ يَنقُصْ مِنْهُ شَيْءٌ"
+        ];
+
+        // Arabic consonants to Latin transliteration map
+        const consonantMap = {
+            'ا': 'ā', 'أ': 'a', 'إ': 'i', 'آ': 'ā',
+            'ب': 'b', 'ت': 't', 'ث': 'th',
+            'ج': 'j', 'ح': 'ḥ', 'خ': 'kh',
+            'د': 'd', 'ذ': 'dh',
+            'ر': 'r', 'ز': 'z',
+            'س': 's', 'ش': 'sh',
+            'ص': 'ṣ', 'ض': 'ḍ',
+            'ط': 'ṭ', 'ظ': 'ẓ',
+            'ع': 'ʿ', 'غ': 'gh',
+            'ف': 'f', 'ق': 'q',
+            'ك': 'k', 'ل': 'l',
+            'م': 'm', 'ن': 'n',
+            'ه': 'h', 'و': 'w',
+            'ي': 'y', 'ى': 'ā',
+            'ء': 'ʾ', 'ة': 'h',
+            'ـ': '', // Tatweel (kashida)
+        };
+
+        // Arabic diacritics mapped to Unicode combining diacritics for Latin
+        // These go ABOVE the previous Latin letter
+        const diacriticMap = {
+            'َ': 'a',   // Fatha → a
+            'ِ': 'i',   // Kasra → i
+            'ُ': 'u',   // Damma → u
+            'ً': 'an',  // Fathatan → an
+            'ٍ': 'in',  // Kasratan → in
+            'ٌ': 'un',  // Dammatan → un
+            'ْ': '',    // Sukun → nothing
+            'ّ': '',    // Shadda → handled separately (double consonant)
+        };
+
+        // Check if character is an Arabic diacritic
+        function isDiacritic(char) {
+            return 'ًٌٍَُِّْ'.includes(char);
+        }
+
+        // Transliterate full Arabic text with diacritics applied to Latin letters
+        function transliterateArabic(text) {
+            let result = '';
+            const chars = [...text];
+
+            for (let i = 0; i < chars.length; i++) {
+                const char = chars[i];
+
+                // Skip diacritics - they're handled with the previous consonant
+                if (isDiacritic(char)) continue;
+
+                // Spaces and punctuation
+                if (char === ' ' || char === '،' || char === '.') {
+                    result += char === '،' ? ',' : char;
+                    continue;
+                }
+
+                // Get the Latin consonant
+                let latin = consonantMap[char];
+                if (latin === undefined) {
+                    // Unknown character - keep as is
+                    result += char;
+                    continue;
+                }
+
+                // Look ahead for diacritics
+                let j = i + 1;
+                while (j < chars.length && isDiacritic(chars[j])) {
+                    const diac = chars[j];
+                    if (diac === 'ّ') {
+                        // Shadda - double the consonant
+                        latin = latin + latin;
+                    } else if (diacriticMap[diac]) {
+                        // Append vowel after consonant
+                        latin = latin + diacriticMap[diac];
+                    }
+                    j++;
+                }
+
+                result += latin;
+            }
+            // Reverse word order AND letters within each word for RTL alignment
+            // Arabic (RTL): word1 word2 word3 (word1 on right)
+            // Latin (LTR) reversed: 3drow 2drow 1drow (1drow on right matches word1)
+            const words = result.split(' ').map(word => [...word].reverse().join(''));
+            return words.reverse().join(' ');
+        }
+
+        // Current sentence index
+        let currentLisanIndex = 0;
+
+        // Update Lisan al-Arab banners with two parallel strips
+        function updateLisanBanners() {
+            const arabicEl = document.getElementById('lisan-arabic');
+            const latinEl = document.getElementById('lisan-latin');
+            if (!arabicEl || !latinEl) return;
+
+            const sentence = lisanSentences[currentLisanIndex];
+            const transliterated = transliterateArabic(sentence);
+
+            // Build the text with diamond separators for continuous loop
+            const diamond = ' ◆ ';
+            arabicEl.textContent = sentence + diamond + sentence + diamond + sentence + diamond;
+            latinEl.textContent = transliterated + diamond + transliterated + diamond + transliterated + diamond;
+
+            // Cycle to next sentence
+            currentLisanIndex = (currentLisanIndex + 1) % lisanSentences.length;
+        }
+
+        // Initialize Lisan banners
+        updateLisanBanners();
+
+        // Synchronized pixel-speed animation for both strips
+        let scrollPosition = 0;
+        const SCROLL_SPEED = 30; // pixels per second (slower = more readable)
+        let lastTime = performance.now();
+
+        function animateMarquee(currentTime) {
+            const deltaTime = (currentTime - lastTime) / 1000;
+            lastTime = currentTime;
+
+            scrollPosition += SCROLL_SPEED * deltaTime;
+
+            const arabicEl = document.getElementById('lisan-arabic');
+            const latinEl = document.getElementById('lisan-latin');
+            const container = document.querySelector('.lisan-banners');
+
+            if (arabicEl && latinEl && container) {
+                const containerWidth = container.offsetWidth;
+                const arabicWidth = arabicEl.offsetWidth;
+
+                // Reset when fully scrolled
+                if (scrollPosition > arabicWidth + containerWidth) {
+                    scrollPosition = 0;
+                    updateLisanBanners();
+                }
+
+                // Apply same transform to both strips (both move left-to-right together)
+                arabicEl.style.transform = `translateX(${scrollPosition}px)`;
+                latinEl.style.transform = `translateX(${scrollPosition}px)`;
+            }
+
+            requestAnimationFrame(animateMarquee);
+        }
+
+        // Start animation
+        requestAnimationFrame(animateMarquee);
     </script>
 </body>
 
