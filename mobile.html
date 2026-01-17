@@ -445,6 +445,10 @@
             font-size: 10px;
             margin: 0 15px;
         }
+
+        .collapsed {
+            display: none !important;
+        }
     </style>
 </head>
 
@@ -647,9 +651,12 @@
         let headersCollapsed = false;
         function toggleHeaders() {
             headersCollapsed = !headersCollapsed;
-            document.querySelector('.system-stats').classList.toggle('collapsed', headersCollapsed);
-            document.querySelector('.control-panel').classList.toggle('collapsed', headersCollapsed);
-            document.querySelector('.lisan-banners').classList.toggle('collapsed', headersCollapsed);
+            // .system-stats removed
+            const controlPanel = document.querySelector('.control-panel');
+            if (controlPanel) controlPanel.classList.toggle('collapsed', headersCollapsed);
+
+            const lisanBanners = document.querySelector('.lisan-banners');
+            if (lisanBanners) lisanBanners.classList.toggle('collapsed', headersCollapsed);
         }
 
         // Initialize
