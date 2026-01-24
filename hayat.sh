@@ -3,7 +3,7 @@
 # Concept from Lisan al-Arab: الاستمرار (istimrar) = continuity
 # التجدد (tajaddud) = renewal/refreshing
 
-SCRIPT_DIR="/home/absolut7/Documents/remotegravity2"
+SCRIPT_DIR="/home/absolut7/Documents/26apps/gravityremote"
 LOG_FILE="/tmp/hayat-proxy.log"
 
 echo "🌙 HAYAT Proxy Starting - $(date)" >> $LOG_FILE

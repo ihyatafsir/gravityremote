@@ -106,55 +106,101 @@
             }
         }
 
-        /* Control Panel - Compact */
+        /* Control Panel - Snappy & Compact */
         .control-panel {
-            padding: 8px 10px;
+            padding: 6px 8px;
             display: flex;
-            gap: 6px;
+            gap: 4px;
+            align-items: center;
         }
 
         .control-btn {
             flex: 1;
-            padding: 8px 10px;
+            padding: 6px 8px;
             border: none;
-            border-radius: 8px;
-            font-size: 11px;
+            border-radius: 6px;
+            font-size: 10px;
             font-weight: 600;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 4px;
+            gap: 3px;
             backdrop-filter: blur(4px);
+            transition: transform 0.1s, box-shadow 0.1s;
         }
 
         .control-btn:active {
-            transform: scale(0.98);
+            transform: scale(0.95);
+        }
+
+        /* Split button group */
+        .btn-group {
+            display: flex;
+            flex: 1.5;
+            gap: 1px;
+        }
+
+        .btn-group .control-btn {
+            flex: 1;
+            border-radius: 0;
+        }
+
+        .btn-group .control-btn:first-child {
+            border-radius: 6px 0 0 6px;
+        }
+
+        .btn-group .control-btn:last-child {
+            border-radius: 0 6px 6px 0;
+        }
+
+        .btn-start {
+            background: rgba(17, 102, 17, 0.5);
+            color: var(--accent-green);
+            border: 1px solid rgba(34, 170, 34, 0.7);
+            text-shadow: 0 0 6px var(--accent-green);
         }
 
         .btn-restart {
-            background: rgba(17, 102, 17, 0.4);
+            background: rgba(34, 68, 34, 0.4);
             color: var(--accent-green);
-            border: 1px solid rgba(34, 170, 34, 0.6);
-            text-shadow: 0 0 5px var(--accent-green);
+            border: 1px solid rgba(34, 170, 34, 0.5);
+            text-shadow: 0 0 4px var(--accent-green);
         }
 
         .btn-refresh {
-            background: rgba(26, 26, 26, 0.6);
+            background: rgba(20, 40, 20, 0.5);
             color: var(--accent-green);
             border: 1px solid rgba(34, 170, 34, 0.4);
         }
 
+        .btn-kill {
+            background: rgba(34, 68, 34, 0.4);
+            color: var(--accent-green);
+            border: 1px solid rgba(34, 170, 34, 0.5);
+        }
+
         .btn-agent {
-            background: rgba(17, 68, 17, 0.4);
+            background: rgba(17, 68, 17, 0.5);
             color: var(--accent-green);
             border: 1px solid rgba(34, 170, 34, 0.6);
             text-shadow: 0 0 5px var(--accent-green);
         }
 
-        .btn-danger {
-            background: linear-gradient(135deg, var(--accent-red) 0%, #cc0000 100%);
-            color: white;
+        /* Stop button - small, matrix-green themed */
+        .btn-stop {
+            flex: 0 0 auto;
+            padding: 6px 10px;
+            background: rgba(40, 20, 20, 0.6);
+            color: #ff6666;
+            border: 1px solid rgba(255, 100, 100, 0.4);
+            font-size: 14px;
+            border-radius: 6px;
+        }
+
+        .btn-stop:hover {
+            background: rgba(60, 20, 20, 0.8);
+            box-shadow: 0 0 8px rgba(255, 100, 100, 0.3);
         }
 
         /* Chat Container */
@@ -480,15 +526,24 @@
 
     <!-- Control Panel -->
     <div class="control-panel">
-        <button class="control-btn btn-restart" onclick="showRestartModal()">
-            ⟳ Restart IDE
-        </button>
+        <div class="btn-group">
+            <button class="control-btn btn-start" onclick="startIDE()">
+                IDE Start
+            </button>
+            <button class="control-btn btn-kill" onclick="killIDE()">
+                Off
+            </button>
+        </div>
         <button class="control-btn btn-agent" onclick="openAgentMode()">
-            ⌨ Agent Mode
+            ⌨ AGENT
+        </button>
+        <button class="control-btn btn-restart" onclick="showRestartModal()">
+            ⟳ Reload
         </button>
         <button class="control-btn btn-refresh" onclick="refreshFrame()">
             ↻ Refresh
         </button>
+        <button class="control-btn btn-stop" onclick="stopAgent()" title="Stop">■</button>
     </div>
 
     <!-- Agent Chat -->
@@ -581,6 +636,42 @@
             showToast('REFRESHING...');
         }
 
+        // Start IDE (when not running)
+        async function startIDE() {
+            showToast('STARTING IDE...');
+            try {
+                const response = await fetch('/api/start-ide', { method: 'POST' });
+                if (response.ok) {
+                    showToast('IDE STARTING');
+                    setTimeout(() => {
+                        agentFrame.src = PROXY_URL;
+                    }, 3000);
+                } else {
+                    showToast('START FAIL');
+                }
+            } catch (e) {
+                showToast('START SIGNAL SENT');
+                setTimeout(() => {
+                    agentFrame.src = PROXY_URL;
+                }, 3000);
+            }
+        }
+
+        // Kill IDE (kill all antigravity processes)
+        async function killIDE() {
+            showToast('KILLING IDE...');
+            try {
+                const response = await fetch('/api/kill-ide', { method: 'POST' });
+                if (response.ok) {
+                    showToast('IDE KILLED');
+                } else {
+                    showToast('KILL FAIL');
+                }
+            } catch (e) {
+                showToast('KILL SIGNAL SENT');
+            }
+        }
+
         // Open Agent Mode (send Ctrl+E to IDE)
         async function openAgentMode() {
             showToast('ACTIVATING AGENT...');
@@ -596,6 +687,21 @@
                 }
             } catch (e) {
                 showToast('SIGNAL SENT');
+            }
+        }
+
+        // Stop Agent operation
+        async function stopAgent() {
+            showToast('STOPPING...');
+            try {
+                const response = await fetch('/api/stop', { method: 'POST' });
+                if (response.ok) {
+                    showToast('STOPPED');
+                } else {
+                    showToast('STOP FAIL');
+                }
+            } catch (e) {
+                showToast('STOP SIGNAL SENT');
             }
         }
 

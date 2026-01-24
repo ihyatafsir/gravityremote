@@ -112,10 +112,132 @@ class MobileHandler(http.server.SimpleHTTPRequestHandler):
         
         if parsed.path == '/api/restart-ide':
             return self.handle_restart_ide()
+        elif parsed.path == '/api/start-ide':
+            return self.handle_start_ide()
+        elif parsed.path == '/api/kill-ide':
+            return self.handle_kill_ide()
         elif parsed.path == '/api/agent-mode':
             return self.handle_agent_mode()
+        elif parsed.path == '/api/stop':
+            return self.handle_stop()
         
         self.send_error(404, 'Not Found')
+    
+    def handle_kill_ide(self):
+        """Kill all Antigravity IDE processes"""
+        print("[Mobile Server] Kill IDE requested")
+        
+        try:
+            # Kill all antigravity processes
+            result = subprocess.run(
+                ['pkill', '-9', '-f', 'antigravity'],
+                capture_output=True,
+                text=True
+            )
+            
+            print(f"[Mobile Server] pkill antigravity result: {result.returncode}")
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = {
+                'success': True,
+                'message': 'All Antigravity processes killed'
+            }
+            self.wfile.write(json.dumps(response).encode())
+            
+        except Exception as e:
+            print(f"[Mobile Server] Kill IDE error: {e}")
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = {'success': False, 'message': str(e)}
+            self.wfile.write(json.dumps(response).encode())
+    
+    def handle_start_ide(self):
+        """Start the Antigravity IDE if not running"""
+        print("[Mobile Server] Start IDE requested")
+        
+        try:
+            # Check if IDE is already running
+            check = subprocess.run(['pgrep', '-f', 'antigravity'], capture_output=True)
+            if check.returncode == 0:
+                # Already running
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                response = {'success': True, 'message': 'IDE already running'}
+                self.wfile.write(json.dumps(response).encode())
+                return
+            
+            # Start the IDE
+            subprocess.Popen(
+                ['/usr/share/antigravity/antigravity', '--no-sandbox'],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True
+            )
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = {'success': True, 'message': 'IDE starting'}
+            self.wfile.write(json.dumps(response).encode())
+            
+        except Exception as e:
+            print(f"[Mobile Server] Start IDE error: {e}")
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = {'success': False, 'message': str(e)}
+            self.wfile.write(json.dumps(response).encode())
+    
+    def handle_stop(self):
+        """Stop the current agent operation by sending Escape key"""
+        print("[Mobile Server] Stop requested (Escape)")
+        
+        try:
+            # Use xdotool to send Escape key to stop current operation
+            result = subprocess.run(
+                ['xdotool', 'key', 'Escape'],
+                capture_output=True,
+                text=True
+            )
+            
+            print(f"[Mobile Server] xdotool Escape result: {result.returncode}")
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = {
+                'success': True,
+                'message': 'Stop signal sent (Escape)'
+            }
+            self.wfile.write(json.dumps(response).encode())
+            
+        except Exception as e:
+            print(f"[Mobile Server] Stop error: {e}")
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = {
+                'success': False,
+                'message': str(e)
+            }
+            self.wfile.write(json.dumps(response).encode())
     
     def handle_agent_mode(self):
         """Send Ctrl+E to open Agent Mode in IDE"""
