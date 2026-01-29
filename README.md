@@ -1,3 +1,4 @@
+"Deprecated"
 # GravityRemote
 
 > 🌐 Access your Antigravity AI Agent through any web browser - **Now with true remote access!**
